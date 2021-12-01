@@ -1,0 +1,193 @@
+---
+title: "IRR"
+author: "Brandon Shields"
+date: "11/30/2021"
+output: html_document
+---
+
+```{r Description}
+
+#The following Inter-rater reliability analysis will comapre reliability between a human and AI grader. This is for 50 students whose total score could be a value between 1 and 6. 
+
+```
+
+```{r Install and Load packages}
+
+install.packages("irr")
+library(irr)
+library(dplyr)
+library(tidyr)
+
+```
+
+
+```{r Getting Data}
+
+human_grader <- read.csv(file = "C:/Users/bshield6/OneDrive - Kent State University/Desktop/Copy of Pilot_Grading 10-28-21.csv")
+
+human_grader <- human_grader[1:51,]
+
+#Change Column names so when merged, We can tell the difference between graders
+
+human_col_names <- colnames(human_grader)
+
+colnames(human_grader) <- paste("Human", human_col_names, sep="_")
+
+human_grader$User_Name <- human_grader$Human_ï..User.Name
+
+human_grader <- human_grader[,-c(1)]
+
+
+#Scores for AI grader
+
+ai_grader <- read.csv(file = "C:/Users/bshield6/OneDrive - Kent State University/Desktop/Copy of Copy of KSU-Assignment1-10-5-21.csv")
+
+ai_grader <- ai_grader[,c(1,3,5:9)]
+
+ai_grader$Total_Score <- ai_grader$Score
+
+ai_col_names <- colnames(ai_grader)
+
+colnames(ai_grader) <- paste("AI", ai_col_names, sep="_")
+
+ai_grader$User_Name <- ai_grader$AI_ï..User.Name
+
+ai_grader <- ai_grader[,-c(1:2)]
+
+
+```
+
+```{r Joining Data Sets}
+irr_data_set <- inner_join(human_grader,ai_grader, by = "User_Name")
+
+#creating data sets for analysis
+irr_total_score <- select(irr_data_set,c("Human_Final_Score", "AI_Total_Score"))
+irr_focus <- select(irr_data_set,c("Human_Focus", "AI_Focus"))
+irr_content <- select(irr_data_set,c("Human_Content", "AI_Content"))
+irr_organization <- select(irr_data_set,c("Human_Organization", "AI_Organization"))
+irr_language <- select(irr_data_set,c("Human_Language", "AI_Language"))
+irr_mechanics <- select(irr_data_set,c("Human_Mechanics", "AI_Mechanics"))
+
+```
+
+```{r Level of Agreement}
+
+#Level of agreement
+agree_total <- irr::agree(irr_total_score)
+agree_focus <- irr::agree(irr_focus)
+agree_content <- irr::agree(irr_content)
+agree_organization <- irr::agree(irr_organization)
+agree_language <- irr::agree(irr_language)
+agree_mechanics <- irr::agree(irr_mechanics)
+
+#level of agreement with a tolerance of one
+
+agree_total1 <- irr::agree(irr_total_score,1)
+agree_focus1 <- irr::agree(irr_focus,1)
+agree_content1 <- irr::agree(irr_content,1)
+agree_organization1 <- irr::agree(irr_organization,1)
+agree_language1 <- irr::agree(irr_language,)
+agree_mechanics1 <- irr::agree(irr_mechanics,1)
+
+#Limitation with agreement is that it does not consider agreement due to random chance
+```
+
+
+```{r Cohen's Kappa}
+
+#Cohen’s kappa is a measure of the agreement between two raters who have recorded a categorical outcome for a number of individuals. Cohen’s kappa factors out agreement due to chance and the two raters either agree or disagree on the category that each subject is assigned to (the level of agreement is not weighted). If you have more than two raters you need to consider an alternative approach which is detailed below.
+
+#To calculate a Cohen’s Kappa the following assumptions need to be met:
+#1. The response being measured by the two raters is categorical (either a nominal or ordinal variable). 
+#2. The responses are paired observations of the same measure and the two raters individually assess the measure for each individual.
+#3. The two raters remain fixed i.e. it is the same two raters assessing each individual.
+#4. The two raters are independent of each other.
+#5. For each assessment each rater makes an assessment based on the exact same number and definition of categories.
+
+#https://www.sheffield.ac.uk/polopoly_fs/1.885169!/file/88_Kappa.pdf
+
+cohen_total <- irr::kappa2(irr_total_score)
+cohen_focus <- irr::kappa2(irr_focus)
+cohen_content <- irr::kappa2(irr_content)
+cohen_organization <- irr::kappa2(irr_organization)
+cohen_language <- irr::kappa2(irr_language)
+cohen_mechanics <- irr::kappa2(irr_mechanics)
+
+#The calculation of Cohen’s kappa accounts for disagreement between two raters but does not take into account the level of the disagreement which is an important consideration when the ratings are in ordered categories.
+
+#Any chosen weights can be used; common weights are calculated as either linear or quadratic sets, where k denotes the total number of categories (5 in this example). 
+
+#If the difference between the first and second category is equally as important as a difference  between the second and third category, etc., use linear weights. Use quadratic weights if the difference between the first and second category is less important than a difference between the second and third category, etc.
+
+
+cohen_totalW <- irr::kappa2(irr_total_score, weight = "equal")
+cohen_focusW <- irr::kappa2(irr_focus, weight = "equal")
+cohen_contentW <- irr::kappa2(irr_content, weight = "equal")
+cohen_organizationW <- irr::kappa2(irr_organization, weight = "equal")
+cohen_languageW <- irr::kappa2(irr_language, weight = "equal")
+cohen_mechanicsW <- irr::kappa2(irr_mechanics, weight = "equal")
+
+
+#Value of K Strength of agreement
+#< 0.20 Poor
+#0.21 - 0.40 Fair
+#0.41 - 0.60 Moderate
+#0.61 - 0.80 Good
+#0.81 - 1.00 Very good
+
+```
+
+```{r Kripp Alpha}
+
+#Krippendorff’s alpha (also called Krippendorff’s Coefficient) is an alternative to Cohen’s Kappa for determining inter-rater reliability.
+
+#Krippendorff’s alpha:
+
+#Ignores missing data entirely.
+#Can handle various sample sizes, categories, and numbers of raters.
+#Applies to any measurement level (i.e. (nominal, ordinal, interval, ratio).
+
+#Commonly used in content analysis to quantify the extent of agreement between raters, it differs from most other measures of inter-rater reliability because it calculates disagreement (as opposed to agreement). This is one reason why the statistic is arguably more reliable, but some researchers report that in practice, the results from both alpha and kappa are similar
+
+
+
+kripp_total <- irr::kripp.alpha(as.matrix(irr_total_score), method = c("ordinal"))
+kripp_focus <- irr::kripp.alpha(as.matrix(irr_focus), method = c("ordinal"))
+kripp_content <- irr::kripp.alpha(as.matrix(irr_content), method = c("ordinal"))
+kripp_organization <- irr::kripp.alpha(as.matrix(irr_organization), method = c("ordinal"))
+kripp_language <- irr::kripp.alpha(as.matrix(irr_language), method = c("ordinal"))
+kripp_mechanics <- irr::kripp.alpha(as.matrix(irr_mechanics), method = c("ordinal"))
+
+#Values range from 0 to 1, where 0 is perfect disagreement and 1 is perfect agreement. Krippendorff suggests: “[I]t is customary to require α ≥ .800. Where tentative conclusions are still acceptable, α ≥ .667 is the lowest conceivable limit
+
+
+```
+
+```{r Build Data Frame of results}
+
+Category <- c("Total Score", "Focus","Content", "Organization", "Language", "Mechanics" )
+Agreement <- c(agree_total$value, agree_focus$value, agree_content$value,
+           agree_organization$value, agree_language$value, agree_mechanics$value)
+
+
+Agreement_Tolerance <- c(agree_total1$value, agree_focus1$value, agree_content1$value,
+           agree_organization1$value, agree_language1$value, agree_mechanics1$value)
+
+C_Kappa <- c(cohen_total$value, cohen_focus$value, cohen_content$value,
+           cohen_organization$value, cohen_language$value, cohen_mechanics$value)
+
+WeightedC_Kappa <- c(cohen_totalW$value, cohen_focusW$value, cohen_contentW$value,
+           cohen_organizationW$value, cohen_languageW$value, cohen_mechanicsW$value)
+
+Kripp_Alpha <- c(kripp_total$value, kripp_focus$value, kripp_content$value,
+           kripp_organization$value, kripp_language$value, cohen_mechanics$value)
+
+
+IRR_Summary <- data.frame(Category,Agreement,Agreement_Tolerance,C_Kappa,
+                             WeightedC_Kappa,Kripp_Alpha)
+
+print(IRR_Summary)
+
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4974794/
+```
+
